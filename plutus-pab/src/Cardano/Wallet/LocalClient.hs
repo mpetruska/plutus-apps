@@ -113,11 +113,13 @@ handleWalletClient config (Wallet _ (WalletId walletId)) event = do
         balanceTxH :: UnbalancedTx -> Eff effs (Either WalletAPIError CardanoTx)
         balanceTxH utx = do
             slotConfig <- WAPI.getClientSlotConfig
+            logWarn . BalanceTxError . show $ "[DEBUG:balanceTxH] utx = " <> show utx
             case export protocolParams networkId slotConfig utx of
                 Left err -> do
                     logWarn $ BalanceTxError $ show $ pretty err
                     throwOtherError $ pretty err
                 Right ex -> do
+                    logWarn . BalanceTxError . show $ "[DEBUG:balanceTxH] ex = " <> show ex
                     res <- runClient' $ C.balanceTransaction C.transactionClient (C.ApiT walletId) (toJSON ex)
                     case res of
                         -- TODO: use the right error case based on http error code

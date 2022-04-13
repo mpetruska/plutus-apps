@@ -45,6 +45,7 @@ import Data.OpenApi qualified as OpenApi
 import Data.Set qualified as Set
 import Data.Typeable (Typeable)
 import Data.Void (Void)
+import Debug.Trace (trace)
 import GHC.Generics (Generic)
 import Ledger qualified as Plutus
 import Ledger.Ada qualified as Ada
@@ -246,7 +247,7 @@ export params networkId slotConfig utx =
     let UnbalancedTx{unBalancedTxTx, unBalancedTxUtxoIndex, unBalancedTxRequiredSignatories} = finalize slotConfig utx
         requiredSigners = Map.keys unBalancedTxRequiredSignatories
      in ExportTx
-        <$> mkPartialTx requiredSigners params networkId unBalancedTxTx
+        <$> mkPartialTx requiredSigners params networkId (trace ("[DEBUG:export] unBalancedTxTx = " <> show unBalancedTxTx) unBalancedTxTx)
         <*> mkInputs networkId unBalancedTxUtxoIndex
         <*> mkRedeemers unBalancedTxTx
 
