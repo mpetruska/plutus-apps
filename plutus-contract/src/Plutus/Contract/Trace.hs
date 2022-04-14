@@ -24,6 +24,7 @@ module Plutus.Contract.Trace
     , AsTraceError(..)
     , toNotifyError
     -- * Handle contract requests
+    , handleAdjustUnbalancedTx
     , handleSlotNotifications
     , handleTimeNotifications
     , handleOwnPaymentPubKeyHashQueries
@@ -47,6 +48,7 @@ module Plutus.Contract.Trace
     , EM.knownWallet
     ) where
 
+import Cardano.Api (Lovelace)
 import Control.Lens (makeClassyPrisms, preview)
 import Control.Monad.Freer (Member)
 import Control.Monad.Freer.Extras.Log (LogMessage, LogMsg, LogObserve)
@@ -200,6 +202,16 @@ handleYieldedUnbalancedTx =
         (preview E._YieldUnbalancedTxReq)
         E.YieldUnbalancedTxResp
         RequestHandler.handleYieldedUnbalancedTx
+
+handleAdjustUnbalancedTx ::
+    ( Member (LogObserve (LogMessage Text)) effs
+    )
+    => Lovelace -> RequestHandler effs PABReq PABResp
+handleAdjustUnbalancedTx coinsPerUTxOWord =
+    generalise
+        (preview E._AdjustUnbalancedTxReq)
+        E.AdjustUnbalancedTxResp
+        (RequestHandler.handleAdjustUnbalancedTx coinsPerUTxOWord)
 
 defaultDist :: InitialDistribution
 defaultDist = defaultDistFor EM.knownWallets

@@ -34,6 +34,7 @@ module Ledger.Index(
     minFee,
     maxFee,
     minAdaTxOut,
+    minLovelaceTxOut,
     mkTxInfo,
     -- * Actual validation
     validateTransaction,
@@ -50,10 +51,10 @@ module Ledger.Index(
     getScript
     ) where
 
-import Prelude hiding (lookup)
-
+import Cardano.Api (Lovelace (..))
 import Cardano.Ledger.Alonzo (AlonzoEra)
 import Cardano.Ledger.Crypto (StandardCrypto)
+import Prelude hiding (lookup)
 
 import Codec.Serialise (Serialise)
 import Control.DeepSeq (NFData)
@@ -387,7 +388,16 @@ checkPositiveValues t =
 --
 -- TODO: In the future, make the value configurable.
 minAdaTxOut :: Ada
-minAdaTxOut = Ada.lovelaceOf 2_000_000
+minAdaTxOut = Ada.lovelaceOf minTxOut
+
+{-# INLINABLE minTxOut #-}
+minTxOut :: Integer
+minTxOut = 2_000_000
+
+-- Minimum required Lovelace for each tx output.
+--
+minLovelaceTxOut :: Lovelace
+minLovelaceTxOut = Lovelace minTxOut
 
 -- | Check if each transaction outputs produced at least two Ada (this is a
 -- restriction on the real Cardano network).

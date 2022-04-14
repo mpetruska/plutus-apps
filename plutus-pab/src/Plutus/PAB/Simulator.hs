@@ -71,6 +71,7 @@ module Plutus.PAB.Simulator(
     , waitForValidatedTxCount
     ) where
 
+import Cardano.Api.ProtocolParameters (minLovelaceTxOut)
 import Cardano.Wallet.Mock.Handlers qualified as MockWallet
 import Control.Concurrent (forkIO)
 import Control.Concurrent.STM (STM, TQueue, TVar)
@@ -212,7 +213,7 @@ mkSimulatorHandlers slotCfg handleContractEffect =
         { initialiseEnvironment =
             (,,)
                 <$> liftIO (STM.atomically   Instances.emptyInstancesState )
-                <*> liftIO (STM.atomically $ Instances.emptyBlockchainEnv Nothing def)
+                <*> liftIO (STM.atomically $ Instances.emptyBlockchainEnv Nothing def minLovelaceTxOut)
                 <*> liftIO (initialState @t)
         , handleContractStoreEffect =
             interpret handleContractStore

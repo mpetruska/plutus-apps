@@ -146,6 +146,7 @@ library
         cardano-wallet-core -any,
         cardano-wallet-core-integration -any,
         cardano-wallet-launcher -any,
+        cardano-ledger-core -any,
         containers -any,
         contra-tracer -any,
         cryptonite -any,

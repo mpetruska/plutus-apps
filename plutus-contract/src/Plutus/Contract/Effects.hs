@@ -8,6 +8,7 @@
 module Plutus.Contract.Effects( -- TODO: Move to Requests.Internal
     -- * Plutus application backend request effect types
     PABReq(..),
+    _AdjustUnbalancedTxReq,
     _AwaitSlotReq,
     _AwaitTimeReq,
     _AwaitUtxoSpentReq,
@@ -40,6 +41,7 @@ module Plutus.Contract.Effects( -- TODO: Move to Requests.Internal
     _GetTip,
     -- * Plutus application backend response effect types
     PABResp(..),
+    _AdjustUnbalancedTxResp,
     _AwaitSlotResp,
     _AwaitTimeResp,
     _AwaitUtxoSpentResp,
@@ -109,7 +111,8 @@ import Wallet.Types (ContractInstanceId, EndpointDescription, EndpointValue)
 
 -- | Requests that 'Contract's can make
 data PABReq =
-    AwaitSlotReq Slot
+    AdjustUnbalancedTxReq UnbalancedTx
+    | AwaitSlotReq Slot
     | AwaitTimeReq POSIXTime
     | AwaitUtxoSpentReq TxOutRef
     | AwaitUtxoProducedReq Address
@@ -130,6 +133,7 @@ data PABReq =
 
 instance Pretty PABReq where
   pretty = \case
+    AdjustUnbalancedTxReq utx               -> "Adjust unbalanced tx:" <+> pretty utx
     AwaitSlotReq s                          -> "Await slot:" <+> pretty s
     AwaitTimeReq s                          -> "Await time:" <+> pretty s
     AwaitUtxoSpentReq utxo                  -> "Await utxo spent:" <+> pretty utxo
@@ -149,7 +153,8 @@ instance Pretty PABReq where
 
 -- | Responses that 'Contract's receive
 data PABResp =
-    AwaitSlotResp Slot
+    AdjustUnbalancedTxResp UnbalancedTx
+    | AwaitSlotResp Slot
     | AwaitTimeResp POSIXTime
     | AwaitUtxoSpentResp ChainIndexTx
     | AwaitUtxoProducedResp (NonEmpty ChainIndexTx)
@@ -170,6 +175,7 @@ data PABResp =
 
 instance Pretty PABResp where
   pretty = \case
+    AdjustUnbalancedTxResp utx               -> "Adjusted unbalanced tx: " <+> pretty utx
     AwaitSlotResp s                          -> "Slot:" <+> pretty s
     AwaitTimeResp s                          -> "Time:" <+> pretty s
     AwaitUtxoSpentResp utxo                  -> "Utxo spent:" <+> pretty utxo
@@ -189,6 +195,7 @@ instance Pretty PABResp where
 
 matches :: PABReq -> PABResp -> Bool
 matches a b = case (a, b) of
+  (AdjustUnbalancedTxReq{}, AdjustUnbalancedTxResp{})      -> True
   (AwaitSlotReq{}, AwaitSlotResp{})                        -> True
   (AwaitTimeReq{}, AwaitTimeResp{})                        -> True
   (AwaitUtxoSpentReq{}, AwaitUtxoSpentResp{})              -> True

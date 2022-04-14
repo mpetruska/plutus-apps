@@ -29,14 +29,13 @@ module Plutus.PAB.App(
     handleContractDefinition
     ) where
 
-import Cardano.Api.NetworkId.Extra (NetworkIdWrapper (NetworkIdWrapper))
 import Cardano.Api.ProtocolParameters ()
 import Cardano.Api.Shelley (ProtocolParameters)
 import Cardano.BM.Trace (Trace, logDebug)
 import Cardano.ChainIndex.Types qualified as ChainIndex
 import Cardano.Node.Client (handleNodeClientClient, runChainSyncWithCfg)
 import Cardano.Node.Types (ChainSyncHandle, NodeMode (AlonzoNode, MockNode),
-                           PABServerConfig (PABServerConfig, pscBaseUrl, pscNetworkId, pscNodeMode, pscProtocolParametersJsonPath, pscSlotConfig, pscSocketPath))
+                           PABServerConfig (PABServerConfig, pscBaseUrl, pscNodeMode, pscProtocolParametersJsonPath, pscSlotConfig, pscSocketPath))
 import Cardano.Protocol.Socket.Mock.Client qualified as MockClient
 import Cardano.Wallet.LocalClient qualified as LocalWalletClient
 import Cardano.Wallet.Mock.Client qualified as WalletMockClient
@@ -81,10 +80,9 @@ import Plutus.PAB.Monitoring.PABLogMsg (PABLogMsg (SMultiAgent), PABMultiAgentMs
                                         WalletClientMsg)
 import Plutus.PAB.Timeout (Timeout (Timeout))
 import Plutus.PAB.Types (Config (Config), DbConfig (..),
-                         DevelopmentOptions (DevelopmentOptions, pabResumeFrom, pabRollbackHistory),
                          PABError (BeamEffectError, ChainIndexError, NodeClientError, RemoteWalletWithMockNodeError, WalletClientError, WalletError),
-                         WebserverConfig (WebserverConfig), chainIndexConfig, dbConfig, developmentOptions,
-                         endpointTimeout, nodeServerConfig, pabWebserverConfig, walletServerConfig)
+                         WebserverConfig (WebserverConfig), chainIndexConfig, dbConfig, endpointTimeout,
+                         nodeServerConfig, pabWebserverConfig, walletServerConfig)
 import Servant.Client (ClientEnv, ClientError, mkClientEnv)
 import Wallet.API (NodeClientEffect)
 import Wallet.Effects (WalletEffect)
@@ -125,10 +123,8 @@ appEffectHandlers storageBackend config trace BuiltinHandler{contractHandler} =
     EffectHandlers
         { initialiseEnvironment = do
             env <- liftIO $ mkEnv trace config
-            let Config { nodeServerConfig = PABServerConfig{pscSocketPath, pscSlotConfig, pscNodeMode, pscNetworkId = NetworkIdWrapper networkId}
-                       , developmentOptions = DevelopmentOptions{pabRollbackHistory, pabResumeFrom} } = config
             instancesState <- liftIO $ STM.atomically Instances.emptyInstancesState
-            blockchainEnv <- liftIO $ BlockchainEnv.startNodeClient pscSocketPath pscNodeMode pabRollbackHistory pscSlotConfig networkId pabResumeFrom instancesState
+            blockchainEnv <- liftIO $ BlockchainEnv.startNodeClient config (protocolParameters env) instancesState
             pure (instancesState, blockchainEnv, env)
 
         , handleLogMessages =

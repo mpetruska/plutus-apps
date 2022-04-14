@@ -79,6 +79,7 @@ module Plutus.Contract.Request(
     -- ** Public key hashes
     , ownPaymentPubKeyHash
     -- ** Submitting transactions
+    , adjustUnbalancedTx
     , submitUnbalancedTx
     , submitBalancedTx
     , balanceTx
@@ -128,7 +129,7 @@ import Plutus.Contract.Util (loopM)
 import PlutusTx qualified
 
 import Plutus.Contract.Effects (ActiveEndpoint (ActiveEndpoint, aeDescription, aeMetadata),
-                                PABReq (AwaitSlotReq, AwaitTimeReq, AwaitTxOutStatusChangeReq, AwaitTxStatusChangeReq, AwaitUtxoProducedReq, AwaitUtxoSpentReq, BalanceTxReq, ChainIndexQueryReq, CurrentSlotReq, CurrentTimeReq, ExposeEndpointReq, OwnContractInstanceIdReq, OwnPaymentPublicKeyHashReq, WriteBalancedTxReq, YieldUnbalancedTxReq),
+                                PABReq (AdjustUnbalancedTxReq, AwaitSlotReq, AwaitTimeReq, AwaitTxOutStatusChangeReq, AwaitTxStatusChangeReq, AwaitUtxoProducedReq, AwaitUtxoSpentReq, BalanceTxReq, ChainIndexQueryReq, CurrentSlotReq, CurrentTimeReq, ExposeEndpointReq, OwnContractInstanceIdReq, OwnPaymentPublicKeyHashReq, WriteBalancedTxReq, YieldUnbalancedTxReq),
                                 PABResp (ExposeEndpointResp))
 import Plutus.Contract.Effects qualified as E
 import Plutus.Contract.Logging (logDebug)
@@ -169,6 +170,15 @@ pabReq req prism = Contract $ do
             $ review _ResumableContractError
             $ WrongVariantError
             $ "unexpected answer: " <> tshow x
+
+-- | Adjust the unbalanced tx
+adjustUnbalancedTx ::
+    forall w s e.
+    ( AsContractError e
+    )
+    => UnbalancedTx
+    -> Contract w s e UnbalancedTx
+adjustUnbalancedTx utx = pabReq (AdjustUnbalancedTxReq utx) E._AdjustUnbalancedTxResp
 
 -- | Wait until the slot
 awaitSlot ::

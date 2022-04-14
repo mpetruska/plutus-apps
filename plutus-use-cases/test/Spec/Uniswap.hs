@@ -149,7 +149,7 @@ setupTokens = do
         let pkh = mockWalletPaymentPubKeyHash w
         when (pkh /= ownPK) $ do
             cs <- mkTxConstraints @Void mempty (mustPayToPubKey pkh v)
-            submitTxConfirmed . adjustUnbalancedTx $ cs
+            Contract.adjustUnbalancedTx cs >>= submitTxConfirmed
 
     tell $ Just $ Semigroup.Last cur
   where

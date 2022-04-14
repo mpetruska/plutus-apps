@@ -396,14 +396,12 @@ mkTx lookups txc = mkSomeTx [SomeLookupsAndConstraints lookups txc]
 
 -- | Each transaction output should contain a minimum amount of Ada (this is a
 -- restriction on the real Cardano network).
---
--- TODO: In the future, the minimum Ada value should be configurable.
-adjustUnbalancedTx :: UnbalancedTx -> UnbalancedTx
-adjustUnbalancedTx = over (tx . Tx.outputs . traverse) adjustTxOut
+adjustUnbalancedTx :: Ledger.Ada -> UnbalancedTx -> UnbalancedTx
+adjustUnbalancedTx minAdaTxOut = over (tx . Tx.outputs . traverse) adjustTxOut
   where
     adjustTxOut :: TxOut -> TxOut
     adjustTxOut txOut =
-      let missingLovelace = max 0 (Ledger.minAdaTxOut - Ada.fromValue (txOutValue txOut))
+      let missingLovelace = max 0 (minAdaTxOut - Ada.fromValue (txOutValue txOut))
        in txOut { txOutValue = txOutValue txOut <> Ada.toValue missingLovelace }
 
 -- | Add the remaining balance of the total value that the tx must spend.

@@ -1,11 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-module Cardano.Api.ProtocolParameters (ProtocolParameters) where
+module Cardano.Api.ProtocolParameters (ProtocolParameters(..), minLovelaceTxOut) where
 
 import Cardano.Api.Shelley
 import Data.Default (Default, def)
 import Data.Map (fromList)
 import Data.Ratio ((%))
+import Ledger.Index (minLovelaceTxOut)
 
 instance Default ProtocolParameters where
     def = ProtocolParameters
@@ -26,7 +27,7 @@ instance Default ProtocolParameters where
         , protocolParamPoolPledgeInfluence = 3 % 10
         , protocolParamMonetaryExpansion = 3 % 1000
         , protocolParamTreasuryCut = 1 % 5
-        , protocolParamUTxOCostPerWord = Just (Lovelace 1)
+        , protocolParamUTxOCostPerWord = Just minLovelaceTxOut
         , protocolParamCostModels = fromList
             [ (AnyPlutusScriptVersion PlutusScriptV1, CostModel (fromList
                 [("add_integer-cpu-arguments-intercept",235735)

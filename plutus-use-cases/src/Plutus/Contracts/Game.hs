@@ -52,8 +52,8 @@ import Ledger.Constraints qualified as Constraints
 import Ledger.Tx (ChainIndexTxOut (..))
 import Ledger.Typed.Scripts qualified as Scripts
 import Playground.Contract (ToSchema)
-import Plutus.Contract (AsContractError, Contract, Endpoint, Promise, collectFromScript, endpoint, fundsAtAddressGeq,
-                        logInfo, mkTxConstraints, selectList, type (.\/), yieldUnbalancedTx)
+import Plutus.Contract (AsContractError, Contract, Endpoint, Promise, adjustUnbalancedTx, collectFromScript, endpoint,
+                        fundsAtAddressGeq, logInfo, mkTxConstraints, selectList, type (.\/), yieldUnbalancedTx)
 import PlutusTx qualified
 import PlutusTx.Code (getCovIdx)
 import PlutusTx.Coverage (CoverageIndex)
@@ -160,8 +160,7 @@ lock = endpoint @"lock" $ \LockArgs { lockArgsGameParam, lockArgsSecret, lockArg
     logInfo @Haskell.String $ "Pay " <> Haskell.show lockArgsValue <> " to the script"
     let lookups = Constraints.typedValidatorLookups (gameInstance lockArgsGameParam)
         tx       = Constraints.mustPayToTheScript (hashString lockArgsSecret) lockArgsValue
-    unbalancedTx <- mkTxConstraints lookups tx
-    yieldUnbalancedTx $ Constraints.adjustUnbalancedTx unbalancedTx
+    mkTxConstraints lookups tx >>= adjustUnbalancedTx >>= yieldUnbalancedTx
 
 -- | The "guess" contract endpoint. See note [Contract endpoints]
 guess :: AsContractError e => Promise () GameSchema e ()

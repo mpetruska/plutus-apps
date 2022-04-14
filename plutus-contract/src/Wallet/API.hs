@@ -65,7 +65,7 @@ import Data.Text (Text)
 import Data.Void (Void)
 import Ledger (CardanoTx, Interval (Interval, ivFrom, ivTo), PaymentPubKeyHash, PubKey (PubKey, getPubKey),
                PubKeyHash (PubKeyHash, getPubKeyHash), Slot, SlotRange, Value, after, always, before, contains,
-               interval, isEmpty, member, singleton, width)
+               interval, isEmpty, member, minAdaTxOut, singleton, width)
 import Ledger.Constraints qualified as Constraints
 import Ledger.TimeSlot qualified as TimeSlot
 import Wallet.Effects (NodeClientEffect, WalletEffect, balanceTx, getClientSlot, getClientSlotConfig,
@@ -91,7 +91,7 @@ payToPaymentPublicKeyHash range v pk = do
     utx <- either (throwError . PaymentMkTxError)
                   pure
                   (Constraints.mkTx @Void mempty constraints)
-    let adjustedUtx = Constraints.adjustUnbalancedTx utx
+    let adjustedUtx = Constraints.adjustUnbalancedTx minAdaTxOut utx
     unless (utx == adjustedUtx) $
       logWarn @Text $ "Wallet.API.payToPublicKeyHash: "
                    <> "Adjusted a transaction output value which has less than the minimum amount of Ada."

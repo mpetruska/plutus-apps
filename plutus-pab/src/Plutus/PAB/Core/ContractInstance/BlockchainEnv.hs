@@ -10,12 +10,15 @@ module Plutus.PAB.Core.ContractInstance.BlockchainEnv(
   , processChainSyncEvent
   ) where
 
-import Cardano.Api (BlockInMode (..), ChainPoint (..), NetworkId)
+import Cardano.Api (BlockInMode (..), ChainPoint (..))
 import Cardano.Api qualified as C
+import Cardano.Api.NetworkId.Extra (NetworkIdWrapper (NetworkIdWrapper))
+import Cardano.Api.ProtocolParameters
 import Cardano.Node.Types (NodeMode (..))
 import Cardano.Protocol.Socket.Client (ChainSyncEvent (..))
 import Cardano.Protocol.Socket.Client qualified as Client
 import Cardano.Protocol.Socket.Mock.Client qualified as MockClient
+import Data.Default
 import Data.Map qualified as Map
 import Data.Monoid (Last (..), Sum (..))
 import Ledger (Block, Slot (..), TxId (..))
@@ -25,14 +28,17 @@ import Plutus.PAB.Core.ContractInstance.STM (BlockchainEnv (..), InstanceClientE
 import Plutus.PAB.Core.ContractInstance.STM qualified as S
 import Plutus.Trace.Emulator.ContractInstance (IndexedBlock (..), indexBlock)
 
+import Plutus.PAB.Types (Config (Config), DevelopmentOptions (DevelopmentOptions, pabResumeFrom, pabRollbackHistory),
+                         developmentOptions, nodeServerConfig)
+
+import Cardano.Node.Types (PABServerConfig (PABServerConfig, pscNetworkId, pscNodeMode, pscSlotConfig, pscSocketPath))
 import Control.Concurrent.STM (STM)
 import Control.Concurrent.STM qualified as STM
 import Control.Lens
 import Control.Monad (forM_, void, when)
 import Control.Tracer (nullTracer)
 import Data.Foldable (foldl')
-import Data.Maybe (catMaybes, maybeToList)
-import Ledger.TimeSlot (SlotConfig)
+import Data.Maybe (catMaybes, fromJust, fromMaybe, maybeToList)
 import Plutus.ChainIndex (BlockNumber (..), ChainIndexTx (..), ChainIndexTxOutputs (..), Depth (..),
                           InsertUtxoFailed (..), InsertUtxoSuccess (..), Point (..), ReduceBlockCountResult (..),
                           RollbackFailed (..), RollbackResult (..), Tip (..), TxConfirmedState (..), TxIdState (..),
@@ -48,23 +54,23 @@ import System.Random
 -- | Connect to the node and write node updates to the blockchain
 --   env.
 startNodeClient ::
-     FilePath -- ^ Socket to connect to node
-  -> NodeMode -- ^ Whether to connect to real node or mock node
-  -> Maybe Int  -- ^ How much history do we remember for rollbacks
-  -> SlotConfig -- ^ Slot config used by the node
-  -> NetworkId -- ^ Cardano network ID
-  -> Point
+     Config -- ^ PAB's config
+  -> ProtocolParameters -- ^ Node's protocol parameters
   -> InstancesState -- ^ In-memory state of running contract instances
   -> IO BlockchainEnv
-startNodeClient socket mode rollbackHistory slotConfig networkId resumePoint instancesState = do
-    env <- STM.atomically $ emptyBlockchainEnv rollbackHistory slotConfig
-    case mode of
+startNodeClient config params instancesState = do
+    let Config { nodeServerConfig = PABServerConfig{pscSocketPath, pscSlotConfig, pscNodeMode, pscNetworkId = NetworkIdWrapper networkId}
+               , developmentOptions = DevelopmentOptions{pabRollbackHistory, pabResumeFrom} } = config
+    let ProtocolParameters{protocolParamUTxOCostPerWord = mCostPerWord } = params
+    let coinsPerUTxOWord = fromMaybe (fromJust $ protocolParamUTxOCostPerWord def) mCostPerWord
+    env <- STM.atomically $ emptyBlockchainEnv pabRollbackHistory pscSlotConfig coinsPerUTxOWord
+    case pscNodeMode of
       MockNode -> do
-        void $ MockClient.runChainSync socket slotConfig
+        void $ MockClient.runChainSync pscSocketPath pscSlotConfig
             (\block slot -> handleSyncAction $ processMockBlock instancesState env block slot)
       AlonzoNode -> do
-        let resumePoints = maybeToList $ toCardanoPoint resumePoint
-        void $ Client.runChainSync socket nullTracer slotConfig networkId resumePoints
+        let resumePoints = maybeToList $ toCardanoPoint pabResumeFrom
+        void $ Client.runChainSync pscSocketPath nullTracer pscSlotConfig networkId resumePoints
           (\block -> handleSyncAction $ processChainSyncEvent instancesState env block)
     pure env
 
