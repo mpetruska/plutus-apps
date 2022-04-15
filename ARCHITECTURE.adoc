@@ -20,6 +20,7 @@ running on. There are two reasons for this:
   across time, in a multi-agent scenario.
 
 include::plutus-ledger/ARCHITECTURE.adoc[]
+include::plutus-ledger-constraints/ARCHITECTURE.adoc[]
 
 == Contract modelling
 
