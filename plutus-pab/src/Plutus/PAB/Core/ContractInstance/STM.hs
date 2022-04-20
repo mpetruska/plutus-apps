@@ -49,7 +49,7 @@ module Plutus.PAB.Core.ContractInstance.STM(
     , InstanceClientEnv(..)
     ) where
 
-import Cardano.Api (Lovelace)
+import Cardano.Api.Shelley (ProtocolParameters)
 import Control.Applicative (Alternative (empty))
 import Control.Concurrent.STM (STM, TMVar, TVar)
 import Control.Concurrent.STM qualified as STM
@@ -149,25 +149,25 @@ data OpenTxOutProducedRequest =
 --   may be interested in.
 data BlockchainEnv =
     BlockchainEnv
-        { beRollbackHistory  :: Maybe Int -- ^ How much history do we retain in the environment. Zero signifies no trimming is done.
-        , beCurrentSlot      :: TVar Slot -- ^ Current slot
-        , beTxChanges        :: TVar (UtxoIndex TxIdState) -- ^ Map holding metadata which determines the status of transactions.
-        , beTxOutChanges     :: TVar (UtxoIndex TxOutBalance) -- ^ Map holding metadata which determines the status of transaction outputs.
-        , beCurrentBlock     :: TVar BlockNumber -- ^ Current block.
-        , beSlotConfig       :: TimeSlot.SlotConfig
-        , beCoinsPerUTxOWord :: Lovelace -- ^ Cost in ada per word of UTxO storage.
+        { beRollbackHistory    :: Maybe Int -- ^ How much history do we retain in the environment. Zero signifies no trimming is done.
+        , beCurrentSlot        :: TVar Slot -- ^ Current slot
+        , beTxChanges          :: TVar (UtxoIndex TxIdState) -- ^ Map holding metadata which determines the status of transactions.
+        , beTxOutChanges       :: TVar (UtxoIndex TxOutBalance) -- ^ Map holding metadata which determines the status of transaction outputs.
+        , beCurrentBlock       :: TVar BlockNumber -- ^ Current block.
+        , beSlotConfig         :: TimeSlot.SlotConfig
+        , beProtocolParameters :: ProtocolParameters
         }
 
 -- | Initialise an empty 'BlockchainEnv' value
-emptyBlockchainEnv :: Maybe Int -> TimeSlot.SlotConfig -> Lovelace -> STM BlockchainEnv
-emptyBlockchainEnv rollbackHistory slotConfig coinsPerUTxOWord =
+emptyBlockchainEnv :: Maybe Int -> TimeSlot.SlotConfig -> ProtocolParameters -> STM BlockchainEnv
+emptyBlockchainEnv rollbackHistory slotConfig pparams =
     BlockchainEnv rollbackHistory
         <$> STM.newTVar 0
         <*> STM.newTVar mempty
         <*> STM.newTVar mempty
         <*> STM.newTVar (BlockNumber 0)
         <*> pure slotConfig
-        <*> pure coinsPerUTxOWord
+        <*> pure pparams
 
 -- | Wait until the current slot is greater than or equal to the
 --   target slot, then return the current slot.

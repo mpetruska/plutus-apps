@@ -32,7 +32,7 @@ module Plutus.PAB.Core.ContractInstance(
     -- * Indexed block
     ) where
 
-import Cardano.Api (Lovelace)
+import Cardano.Api.Shelley (ProtocolParameters)
 import Control.Applicative (Alternative (empty, (<|>)))
 import Control.Arrow ((>>>))
 import Control.Concurrent (forkIO)
@@ -67,7 +67,7 @@ import Wallet.Emulator.LogMessages (TxBalanceMsg)
 import Wallet.Emulator.Wallet qualified as Wallet
 
 import Plutus.ChainIndex (ChainIndexQueryEffect, RollbackState (Unknown))
-import Plutus.PAB.Core.ContractInstance.STM (Activity (Done, Stopped), BlockchainEnv (beCoinsPerUTxOWord),
+import Plutus.PAB.Core.ContractInstance.STM (Activity (Done, Stopped), BlockchainEnv (beProtocolParameters),
                                              InstanceState (InstanceState, issStop), InstancesState,
                                              callEndpointOnInstance, emptyInstanceState)
 import Plutus.PAB.Core.ContractInstance.STM qualified as InstanceState
@@ -257,8 +257,8 @@ stmRequestHandler ::
     , Member (Reader BlockchainEnv) effs
     , Member (Reader InstanceState) effs
     )
-    => Lovelace -> RequestHandler effs (Request PABReq) (STM (Response PABResp))
-stmRequestHandler coinsPerUTxOWord =
+    => ProtocolParameters -> RequestHandler effs (Request PABReq) (STM (Response PABResp))
+stmRequestHandler pparams =
     fmap sequence (wrapHandler (fmap pure nonBlockingRequests) <> blockingRequests) where
 
     -- requests that can be handled by 'WalletEffect', 'ChainIndexQueryEffect', etc.
@@ -271,7 +271,7 @@ stmRequestHandler coinsPerUTxOWord =
         <> RequestHandler.handleCurrentSlotQueries @effs
         <> RequestHandler.handleCurrentTimeQueries @effs
         <> RequestHandler.handleYieldedUnbalancedTx @effs
-        <> (RequestHandler.handleAdjustUnbalancedTx @effs coinsPerUTxOWord)
+        <> (RequestHandler.handleAdjustUnbalancedTx @effs pparams)
 
     -- requests that wait for changes to happen
     blockingRequests =
@@ -412,5 +412,5 @@ respondToRequestsSTM ::
 respondToRequestsSTM instanceId currentState = do
     let rqs = Contract.requests @t currentState
     logDebug @(ContractInstanceMsg t) $ HandlingRequests instanceId rqs
-    coinsPerUTxOWord <- beCoinsPerUTxOWord <$> ask @BlockchainEnv
-    tryHandler' (stmRequestHandler coinsPerUTxOWord) rqs
+    pparams <- beProtocolParameters <$> ask @BlockchainEnv
+    tryHandler' (stmRequestHandler pparams) rqs

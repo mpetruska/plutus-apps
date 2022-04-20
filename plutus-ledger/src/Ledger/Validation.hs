@@ -14,9 +14,11 @@ module Ledger.Validation(
   SlotNo(..),
   EmulatorEra,
   CardanoLedgerError,
+  emulatorProtocolParameters,
   initialState,
   evaluateTransactionFee,
   evaluateMinLovelaceOutput,
+  evaluateMinLovelaceOutput',
   getRequiredSigners,
   addSignature,
   hasValidationErrors,
@@ -30,6 +32,7 @@ module Ledger.Validation(
   fromPlutusTx,
   fromPlutusIndex,
   fromPlutusTxOut,
+  fromPlutusTxOut',
   fromPlutusTxOutRef,
   -- * Lenses
   ledgerEnv,
@@ -275,8 +278,16 @@ evaluateTransactionFee utxo requiredSigners tx = do
   case C.Api.evaluateTransactionFee emulatorProtocolParameters txBody nkeys 0 of
     C.Api.Lovelace fee -> pure $ P.lovelaceValueOf fee
 
-evaluateMinLovelaceOutput :: TxOut EmulatorEra -> P.Value
-evaluateMinLovelaceOutput = toPlutusValue . C.Ledger.evaluateMinLovelaceOutput emulatorPParams
+evaluateMinLovelaceOutput' :: TxOut EmulatorEra -> P.Value
+evaluateMinLovelaceOutput' = toPlutusValue . C.Ledger.evaluateMinLovelaceOutput emulatorPParams
+
+evaluateMinLovelaceOutput ::
+     C.Api.ProtocolParameters
+  -> TxOut EmulatorEra
+  -> P.Value
+evaluateMinLovelaceOutput params = toPlutusValue . C.Ledger.evaluateMinLovelaceOutput pparams
+  where
+    pparams = C.Api.toLedgerPParams ShelleyBasedEraAlonzo params
 
 toPlutusValue :: Coin -> P.Value
 toPlutusValue (Coin c) = P.lovelaceValueOf c
@@ -323,8 +334,11 @@ fromPlutusTxOutRef (P.TxOutRef txId i) = TxIn <$> fromPlutusTxId txId <*> pure (
 fromPlutusTxId :: P.TxId -> Either P.ToCardanoError (TxId StandardCrypto)
 fromPlutusTxId = fmap toShelleyTxId . P.toCardanoTxId
 
-fromPlutusTxOut :: P.TxOut -> Either P.ToCardanoError (TxOut EmulatorEra)
-fromPlutusTxOut = fmap (toShelleyTxOut ShelleyBasedEraAlonzo) . P.toCardanoTxOut emulatorNetworkId P.toCardanoTxOutDatumHash
+fromPlutusTxOut' :: P.TxOut -> Either P.ToCardanoError (TxOut EmulatorEra)
+fromPlutusTxOut' = fmap (toShelleyTxOut ShelleyBasedEraAlonzo) . P.toCardanoTxOut emulatorNetworkId P.toCardanoTxOutDatumHash
+
+fromPlutusTxOut :: C.Api.NetworkId -> P.TxOut -> Either P.ToCardanoError (TxOut EmulatorEra)
+fromPlutusTxOut networkId = fmap (toShelleyTxOut ShelleyBasedEraAlonzo) . P.toCardanoTxOut networkId P.toCardanoTxOutDatumHash
 
 fromPaymentPrivateKey :: P.PrivateKey -> TxBody EmulatorEra -> C.Api.KeyWitness C.Api.AlonzoEra
 fromPaymentPrivateKey xprv txBody

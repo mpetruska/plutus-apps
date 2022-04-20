@@ -18,7 +18,6 @@ import Cardano.Node.Types (NodeMode (..))
 import Cardano.Protocol.Socket.Client (ChainSyncEvent (..))
 import Cardano.Protocol.Socket.Client qualified as Client
 import Cardano.Protocol.Socket.Mock.Client qualified as MockClient
-import Data.Default
 import Data.Map qualified as Map
 import Data.Monoid (Last (..), Sum (..))
 import Ledger (Block, Slot (..), TxId (..))
@@ -38,7 +37,7 @@ import Control.Lens
 import Control.Monad (forM_, void, when)
 import Control.Tracer (nullTracer)
 import Data.Foldable (foldl')
-import Data.Maybe (catMaybes, fromJust, fromMaybe, maybeToList)
+import Data.Maybe (catMaybes, maybeToList)
 import Plutus.ChainIndex (BlockNumber (..), ChainIndexTx (..), ChainIndexTxOutputs (..), Depth (..),
                           InsertUtxoFailed (..), InsertUtxoSuccess (..), Point (..), ReduceBlockCountResult (..),
                           RollbackFailed (..), RollbackResult (..), Tip (..), TxConfirmedState (..), TxIdState (..),
@@ -58,12 +57,10 @@ startNodeClient ::
   -> ProtocolParameters -- ^ Node's protocol parameters
   -> InstancesState -- ^ In-memory state of running contract instances
   -> IO BlockchainEnv
-startNodeClient config params instancesState = do
+startNodeClient config pparams instancesState = do
     let Config { nodeServerConfig = PABServerConfig{pscSocketPath, pscSlotConfig, pscNodeMode, pscNetworkId = NetworkIdWrapper networkId}
                , developmentOptions = DevelopmentOptions{pabRollbackHistory, pabResumeFrom} } = config
-    let ProtocolParameters{protocolParamUTxOCostPerWord = mCostPerWord } = params
-    let coinsPerUTxOWord = fromMaybe (fromJust $ protocolParamUTxOCostPerWord def) mCostPerWord
-    env <- STM.atomically $ emptyBlockchainEnv pabRollbackHistory pscSlotConfig coinsPerUTxOWord
+    env <- STM.atomically $ emptyBlockchainEnv pabRollbackHistory pscSlotConfig pparams
     case pscNodeMode of
       MockNode -> do
         void $ MockClient.runChainSync pscSocketPath pscSlotConfig

@@ -53,6 +53,7 @@ import Control.Monad.Except (MonadError (catchError, throwError), runExcept, unl
 import Control.Monad.Reader (MonadReader (ask), ReaderT (runReaderT), asks)
 import Control.Monad.State (MonadState (get, put), execStateT, gets)
 
+import Cardano.Api.Shelley (ProtocolParameters)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Foldable (traverse_)
 import Data.List (elemIndex)
@@ -68,7 +69,6 @@ import PlutusTx.Lattice (BoundedMeetSemiLattice (top), JoinSemiLattice ((\/)), M
 import PlutusTx.Numeric qualified as N
 
 import Data.Semigroup (First (First, getFirst))
-import Ledger qualified
 import Ledger.Address (PaymentPubKey (PaymentPubKey), PaymentPubKeyHash (PaymentPubKeyHash), StakePubKeyHash,
                        pubKeyHashAddress)
 import Ledger.Address qualified as Address
@@ -398,13 +398,12 @@ mkTx lookups txc = mkSomeTx [SomeLookupsAndConstraints lookups txc]
 
 -- | Each transaction output should contain a minimum amount of Ada (this is a
 -- restriction on the real Cardano network).
--- TODO: use coinsPerUtxoWord
-adjustUnbalancedTx :: Ledger.Ada -> UnbalancedTx -> UnbalancedTx
-adjustUnbalancedTx _ = over (tx . Tx.outputs . traverse) adjustTxOut
+adjustUnbalancedTx :: ProtocolParameters -> UnbalancedTx -> UnbalancedTx
+adjustUnbalancedTx pparams = over (tx . Tx.outputs . traverse) adjustTxOut
   where
     adjustTxOut :: TxOut -> TxOut
     adjustTxOut txOut =
-      let minAdaTxOut' = either (const minAdaTxOut) (Ada.fromValue . evaluateMinLovelaceOutput) $ fromPlutusTxOut txOut in
+      let minAdaTxOut' = either (const minAdaTxOut) (Ada.fromValue . evaluateMinLovelaceOutput pparams) $ fromPlutusTxOut' txOut in
       let missingLovelace = max 0 (minAdaTxOut' - Ada.fromValue (txOutValue txOut))
        in txOut { txOutValue = txOutValue txOut <> Ada.toValue missingLovelace }
 

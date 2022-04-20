@@ -56,6 +56,7 @@ module Wallet.API(
     Wallet.Error.throwOtherError,
     ) where
 
+import Control.Lens (over)
 import Control.Monad (unless, void)
 import Control.Monad.Freer (Eff, Member)
 import Control.Monad.Freer.Error (Error, throwError)
@@ -67,7 +68,10 @@ import Ledger (CardanoTx, Interval (Interval, ivFrom, ivTo), PaymentPubKeyHash, 
                PubKeyHash (PubKeyHash, getPubKeyHash), Slot, SlotRange, Value, after, always, before, contains,
                interval, isEmpty, member, minAdaTxOut, singleton, width)
 import Ledger.Constraints qualified as Constraints
+import Ledger.Constraints.OffChain (tx)
 import Ledger.TimeSlot qualified as TimeSlot
+import Ledger.Tx qualified as Tx
+import Plutus.V1.Ledger.Ada qualified as Ada
 import Wallet.Effects (NodeClientEffect, WalletEffect, balanceTx, getClientSlot, getClientSlotConfig,
                        ownPaymentPubKeyHash, publishTx, submitTxn, walletAddSignature, yieldUnbalancedTx)
 import Wallet.Error (WalletAPIError (PaymentMkTxError))
@@ -78,7 +82,7 @@ import Wallet.Error qualified
 --
 --  Note: Due to a constraint in the Cardano ledger, each tx output must have a
 --  minimum amount of Ada. Therefore, the funds to transfer will be adjusted
---  to satisfy that constraint. See 'Ledger.Constraints.OffChain.adjustUnbalancedTx.
+--  to satisfy that constraint. See 'adjustUnbalancedTx.
 payToPaymentPublicKeyHash ::
     ( Member WalletEffect effs
     , Member (Error WalletAPIError) effs
@@ -91,12 +95,20 @@ payToPaymentPublicKeyHash range v pk = do
     utx <- either (throwError . PaymentMkTxError)
                   pure
                   (Constraints.mkTx @Void mempty constraints)
-    let adjustedUtx = Constraints.adjustUnbalancedTx minAdaTxOut utx
+    let adjustedUtx = adjustUnbalancedTx utx
     unless (utx == adjustedUtx) $
       logWarn @Text $ "Wallet.API.payToPublicKeyHash: "
                    <> "Adjusted a transaction output value which has less than the minimum amount of Ada."
     balancedTx <- balanceTx adjustedUtx
     either throwError signTxAndSubmit balancedTx
+    where
+        adjustUnbalancedTx :: Constraints.UnbalancedTx -> Constraints.UnbalancedTx
+        adjustUnbalancedTx = over (tx . Tx.outputs . traverse) adjustTxOut
+          where
+            adjustTxOut :: Tx.TxOut -> Tx.TxOut
+            adjustTxOut txOut =
+              let missingLovelace = max 0 (minAdaTxOut - Ada.fromValue (Tx.txOutValue txOut))
+               in txOut { Tx.txOutValue = Tx.txOutValue txOut <> Ada.toValue missingLovelace }
 
 -- | Transfer some funds to an address locked by a public key.
 payToPaymentPublicKeyHash_ ::

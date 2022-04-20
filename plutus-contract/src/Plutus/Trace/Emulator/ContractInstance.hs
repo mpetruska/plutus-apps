@@ -52,8 +52,8 @@ import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Set qualified as Set
 import Data.Text qualified as T
 import Ledger.Blockchain (OnChainTx (Invalid, Valid))
-import Ledger.Index (minLovelaceTxOut)
 import Ledger.Tx (Address, TxIn (txInRef), TxOut (TxOut, txOutAddress), TxOutRef, txId)
+import Ledger.Validation (emulatorProtocolParameters)
 import Plutus.ChainIndex (ChainIndexQueryEffect, ChainIndexTx (ChainIndexTx, _citxOutputs, _citxTxId),
                           ChainIndexTxOutputs (InvalidTx, ValidTx), RollbackState (Committed),
                           TxOutState (Spent, Unspent), TxValidity (TxInvalid, TxValid), _ValidTx, citxInputs,
@@ -259,7 +259,7 @@ handleBlockchainQueries =
     <> RequestHandler.handleCurrentTimeQueries
     <> RequestHandler.handleTimeToSlotConversions
     <> RequestHandler.handleYieldedUnbalancedTx
-    <> (RequestHandler.handleAdjustUnbalancedTx minLovelaceTxOut)
+    <> (RequestHandler.handleAdjustUnbalancedTx emulatorProtocolParameters)
 
 
 decodeEvent ::

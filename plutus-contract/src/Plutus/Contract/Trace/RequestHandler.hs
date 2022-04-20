@@ -31,7 +31,7 @@ module Plutus.Contract.Trace.RequestHandler(
     , handleYieldedUnbalancedTx
     ) where
 
-import Cardano.Api (Lovelace, lovelaceToValue)
+import Cardano.Api.Shelley (ProtocolParameters)
 import Control.Applicative (Alternative (empty, (<|>)))
 import Control.Arrow (Arrow, Kleisli (Kleisli))
 import Control.Category (Category)
@@ -44,7 +44,6 @@ import Control.Monad.Freer.NonDet qualified as NonDet
 import Control.Monad.Freer.Reader (Reader, ask)
 import Data.Monoid (Alt (Alt), Ap (Ap))
 import Data.Text (Text)
-import Plutus.Contract.CardanoAPI qualified as CardanoAPI
 import Plutus.Contract.Resumable (Request (Request, itID, rqID, rqRequest),
                                   Response (Response, rspItID, rspResponse, rspRqID))
 
@@ -57,7 +56,6 @@ import Plutus.ChainIndex (ChainIndexQueryEffect)
 import Plutus.ChainIndex.Effects qualified as ChainIndexEff
 import Plutus.Contract.Effects (ChainIndexQuery (..), ChainIndexResponse (..))
 import Plutus.Contract.Wallet qualified as Wallet
-import Plutus.V1.Ledger.Ada qualified as Ada
 import Wallet.API (WalletAPIError)
 import Wallet.Effects (NodeClientEffect, WalletEffect)
 import Wallet.Effects qualified
@@ -264,10 +262,8 @@ handleAdjustUnbalancedTx ::
     forall effs.
     ( Member (LogObserve (LogMessage Text)) effs
     )
-    => Lovelace
+    => ProtocolParameters
     -> RequestHandler effs UnbalancedTx UnbalancedTx
-handleAdjustUnbalancedTx coinsPerUTxOWord =
+handleAdjustUnbalancedTx pparams =
     RequestHandler $ \utx ->
-        surroundDebug @Text "handleAdjustUnbalancedTx" $ do
-            let adaPerUTxOWord = Ada.fromValue $ CardanoAPI.fromCardanoValue $ lovelaceToValue $ coinsPerUTxOWord
-            pure $ adjustUnbalancedTx adaPerUTxOWord utx
+        surroundDebug @Text "handleAdjustUnbalancedTx" $ pure $ adjustUnbalancedTx pparams utx
