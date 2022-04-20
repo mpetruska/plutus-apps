@@ -90,7 +90,7 @@ import Ledger.Typed.Scripts (Any, TypedValidator, ValidatorTypes (DatumType, Red
 import Ledger.Typed.Scripts qualified as Scripts
 import Ledger.Typed.Tx (ConnectionError)
 import Ledger.Typed.Tx qualified as Typed
-import Ledger.Validation (evaluateMinLovelaceOutput, fromPlutusTxOut)
+import Ledger.Validation (evaluateMinLovelaceOutput, fromPlutusTxOut')
 import Plutus.V1.Ledger.Ada qualified as Ada
 import Plutus.V1.Ledger.Time (POSIXTimeRange)
 import Plutus.V1.Ledger.Value (Value)
