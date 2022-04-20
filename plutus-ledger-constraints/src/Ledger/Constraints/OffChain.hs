@@ -79,6 +79,7 @@ import Ledger.Constraints.TxConstraints (ScriptInputConstraint (ScriptInputConst
                                          TxConstraintFuns (TxConstraintFuns),
                                          TxConstraints (TxConstraints, txConstraintFuns, txConstraints, txOwnInputs, txOwnOutputs))
 import Ledger.Crypto (pubKeyHash)
+import Ledger.Index (minAdaTxOut)
 import Ledger.Orphans ()
 import Ledger.Scripts (Datum (Datum), DatumHash, MintingPolicy, MintingPolicyHash, Redeemer, Validator, ValidatorHash,
                        datumHash, mintingPolicyHash, validatorHash)
@@ -89,6 +90,7 @@ import Ledger.Typed.Scripts (Any, TypedValidator, ValidatorTypes (DatumType, Red
 import Ledger.Typed.Scripts qualified as Scripts
 import Ledger.Typed.Tx (ConnectionError)
 import Ledger.Typed.Tx qualified as Typed
+import Ledger.Validation (evaluateMinLovelaceOutput, fromPlutusTxOut)
 import Plutus.V1.Ledger.Ada qualified as Ada
 import Plutus.V1.Ledger.Time (POSIXTimeRange)
 import Plutus.V1.Ledger.Value (Value)
@@ -396,12 +398,14 @@ mkTx lookups txc = mkSomeTx [SomeLookupsAndConstraints lookups txc]
 
 -- | Each transaction output should contain a minimum amount of Ada (this is a
 -- restriction on the real Cardano network).
+-- TODO: use coinsPerUtxoWord
 adjustUnbalancedTx :: Ledger.Ada -> UnbalancedTx -> UnbalancedTx
-adjustUnbalancedTx minAdaTxOut = over (tx . Tx.outputs . traverse) adjustTxOut
+adjustUnbalancedTx _ = over (tx . Tx.outputs . traverse) adjustTxOut
   where
     adjustTxOut :: TxOut -> TxOut
     adjustTxOut txOut =
-      let missingLovelace = max 0 (minAdaTxOut - Ada.fromValue (txOutValue txOut))
+      let minAdaTxOut' = either (const minAdaTxOut) (Ada.fromValue . evaluateMinLovelaceOutput) $ fromPlutusTxOut txOut in
+      let missingLovelace = max 0 (minAdaTxOut' - Ada.fromValue (txOutValue txOut))
        in txOut { txOutValue = txOutValue txOut <> Ada.toValue missingLovelace }
 
 -- | Add the remaining balance of the total value that the tx must spend.

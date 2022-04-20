@@ -29,6 +29,8 @@ module Ledger.Validation(
   -- * Conversion from Plutus types
   fromPlutusTx,
   fromPlutusIndex,
+  fromPlutusTxOut,
+  fromPlutusTxOutRef,
   -- * Lenses
   ledgerEnv,
   memPoolState,
