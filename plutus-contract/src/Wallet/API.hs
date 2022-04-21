@@ -82,7 +82,7 @@ import Wallet.Error qualified
 --
 --  Note: Due to a constraint in the Cardano ledger, each tx output must have a
 --  minimum amount of Ada. Therefore, the funds to transfer will be adjusted
---  to satisfy that constraint. See 'adjustUnbalancedTx.
+--  to satisfy that constraint. See 'adjustUnbalancedTx'.
 payToPaymentPublicKeyHash ::
     ( Member WalletEffect effs
     , Member (Error WalletAPIError) effs
