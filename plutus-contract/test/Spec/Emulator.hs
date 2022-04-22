@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE NumericUnderscores  #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
@@ -83,7 +84,8 @@ tests = testGroup "all tests" [
     ],
     testGroup "Etc." [
         testProperty "selectCoin" selectCoinProp,
-        testProperty "txnFlows" txnFlowsTest
+        testProperty "txnFlows" txnFlowsTest,
+        bigTokensInit
         ]
     ]
 
@@ -312,3 +314,15 @@ genChainTxn = do
 
 initialBalance :: Value
 initialBalance = Ada.adaValueOf 100
+
+bigInitialBalance :: Value
+bigInitialBalance = foldr ((<>) . (`Value.assetClassValue` 1_000_000_000)) (Ada.toValue $ Ada.lovelaceOf 1_000_000_000) dummyTokens
+  where
+      dummyCurrency = "648823ffdad1610b4162f4dbc87bd47f6f9cf45d772ddef661eff198"
+      dummyTokens   = [Value.assetClass dummyCurrency tn | tn <- ["Token1", "Token2", "Token3", "Token4", "Token5", "Token6", "Token7", "Token8", "Token9", "Token10", "Token11", "Token12", "MaxLengthTokenMaxLengthToken0001", "MaxLengthTokenMaxLengthToken0002"]]
+
+bigTokensInit :: TestTree
+bigTokensInit =
+    checkPredicateOptions options "checkPredicateOptions does not fail with a bug number of tokens" assertNoFailedTransactions pubKeyTransactions
+    where
+        options = defaultCheckOptions & changeInitialWalletValue w1 (const bigInitialBalance)
